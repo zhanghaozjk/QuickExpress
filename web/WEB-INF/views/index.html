@@ -1,0 +1,202 @@
+<html>
+<head>
+  <title>快查快递</title>
+  <link rel="stylesheet" href="./css/bootstrap.min.css">
+  <link rel="stylesheet" href="./css/font-awesome.min.css">
+  <script src="./js/jquery-3.3.1.min.js"></script>
+  <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=LPhMiMnQfmi0YC2uw0MLlcKufsuUypih"></script>
+  <script type="text/javascript" src="http://api.map.baidu.com/library/CurveLine/1.5/src/CurveLine.min.js"></script>
+  <script>
+      $(document).ready(function() {
+          $("#data").hide();
+          $("#maps").hide();
+          $("#checkbutton").click(function () {
+              $("#logo").addClass("unable");
+              $("#find").removeClass("find").addClass("newFind");
+              $("#unable1").removeClass("unable");
+              $("#unable2").removeClass("unable");
+              $("#data").show();
+              $("#maps").show();
+              var kdno = $("#expressno").val();
+              console.log(kdno);
+              $.ajax({
+                  type: "GET",
+                  scriptCharset: "utf-8",
+                  url: "/ajaxrequest",
+                  data: "kdno=" + kdno,
+                  contentType:"application/json",
+                  dataType: "json",
+
+                  success: function (result) {
+                      var arr = eval(result);
+                      $("#data").empty();
+                      if(arr.length == 0){
+                          $("#data").append(kdno + "没有查询该快递单号结果，请检查快递单号或稍后重试");
+                      }
+                      for(var m = 0; m < arr.length; m++){
+                          $("#data").append(arr[m] + '<br/>');
+                      }
+                      console.log("快递状态信息已经获取");
+                      getLocations();
+                  },
+                  error: function () {
+                      console.log(kdno + " 该快递单号未返回正确的信息，请稍后重试。");
+                      $("#myDiv").html(kdno + "该快递单号未返回正确的信息，请稍后重试");
+                  }
+
+              });
+          });
+      });
+      function getLocations() {
+          $.ajax({
+              type: "GET",
+              scriptCharset: "utf-8",
+              url: "/ajaxLocation",
+              contentType:"application/json",
+              dataType: "json",
+
+              success: function (result) {
+                  var arr = eval(result);
+                  console.log(JSON.parse(arr[0]).lng);
+                  if(arr.length == 0){
+                      $("#data").append("没有查询该快递单号地图信息结果，请检查快递单号或稍后重试");
+                  }
+                  for(var m = 0; m < arr.length; m++){
+                      arr[m] = JSON.parse(arr[m]);
+                  }
+                  var map = new BMap.Map("maps");
+                  var points = new Array(arr.length);
+                  for (var i = 0; i < arr.length; i++) {
+                      points[i] = new BMap.Point(arr[i].lng, arr[i].lat);
+                      var maker = new BMap.Marker(points[i]);
+                      map.addOverlay(maker);
+                  }
+                  map.centerAndZoom(new BMap.Point(arr[arr.length-1].lng, arr[arr.length-1].lat), 9);
+                  map.enableScrollWheelZoom();
+                  var curve = new BMapLib.CurveLine(points, {strokeColor:"blue", strokeWeight:3, strokeOpacity:0.5}); //创建弧线对象
+                  map.addOverlay(curve); //添加到地图中
+                  curve.enableEditing(); //开启编辑功能
+
+                  console.log("地图已经显示");
+
+              },
+              error: function () {
+                  console.log(" 该快递单号未返回正确的信息，请稍后重试。");
+                  $("#myDiv").html("地图未正确显示");
+              }
+          });
+      }
+  </script>
+
+
+  <style type="text/css">
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    .find{
+      text-align: center;
+      padding-top: 80px;
+      margin: 0 auto;
+      width: 50%;
+    }
+    #checkbutton{
+      outline: none;
+    }
+    img{
+      width: 100px;
+      margin-bottom: 80px;
+    }
+    li:hover{
+      background-color: #e7e7e7;
+    }
+    footer{
+      position:absolute;
+      bottom:0;
+      width:100%;
+      height:100px;
+    }
+    .unable{
+      display: none;
+    }
+    .newFind{
+      position: absolute;
+      left: 66px;
+      top: 50px;
+      width: 350px;
+    }
+    .data{
+      position: absolute;
+      left: 66px;
+      top:84px;
+      background-color: rgba(255,255,255,0.8);
+      width: 348px;
+      /**/
+      height: 400px;
+      padding:20px 30px;
+      overflow: hidden;
+      float: left;
+      z-index: 9999;
+      box-shadow: 3px 3px 2px #888888;
+      overflow:auto;
+    }
+    .maps{
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .unable{
+      display: none;
+    }
+    .anchorBL{
+      display:none;
+    }
+    .BMap_Marker{
+      width: 4px;
+      height: 4px;
+      background-color: red;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="find" id="find">
+  <img src="./img/logo.png" id="logo">
+  <div class="input-group input-new" id="search">
+    <input type="text" style="outline:none;" class="form-control" aria-label="..." v-model="serviceData.keyword" id="expressno">
+    <div class="input-group-btn">
+      <button type="button" class="btn btn-default" id="checkbutton">快查一下</button>
+    </div>
+  </div>
+</div>
+<div>
+  <div class="unable" id="unable1">
+    <div class="data" id="data">
+    </div>
+  </div>
+  <div class="unable" id="unable2">
+    <div class="maps" id="maps"></div>
+  </div>
+</div>
+<footer class="container-fluid foot-wrap">
+  <p align="center" style="margin-top: 20px;color:#878B91;">
+     &copy;2018 hcven.cn
+  </p>
+</footer>
+</body>
+</html>
+<script type="text/javascript">
+    // 百度地图API功能
+    var map = new BMap.Map("maps");
+    map.centerAndZoom(new BMap.Point(118.454, 32.955), 6);
+    map.enableScrollWheelZoom();
+    var beijingPosition=new BMap.Point(116.432045,39.910683),
+        hangzhouPosition=new BMap.Point(120.129721,30.314429),
+        taiwanPosition=new BMap.Point(121.491121,25.127053);
+    var points = [beijingPosition,hangzhouPosition, taiwanPosition];
+
+    var curve = new BMapLib.CurveLine(points, {strokeColor:"blue", strokeWeight:3, strokeOpacity:0.5}); //创建弧线对象
+    map.addOverlay(curve); //添加到地图中
+    curve.enableEditing(); //开启编辑功能
+</script>
