@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/zhanghaozjk/QuickExpress.svg?branch=master)](https://travis-ci.org/zhanghaozjk/QuickExpress)
 ###@Author HC
 基于快递鸟和百度地图开放接口的地图可视化
 
