@@ -10,7 +10,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="qExpress" target="1.5" />
+      <module name="qExpress" target="8" />
     </bytecodeTargetLevel>
   </component>
 </project>

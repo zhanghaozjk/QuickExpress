@@ -1,29 +1,31 @@
 <html>
 <head>
   <title>快查快递</title>
+  <meta charset="utf-8">
   <link rel="stylesheet" href="./css/bootstrap.min.css">
-  <link rel="stylesheet" href="./css/font-awesome.min.css">
-  <script src="./js/jquery-3.3.1.min.js"></script>
+  <link rel="stylesheet" href="http://apps.bdimg.com/libs/fontawesome/4.4.0/css/font-awesome.min.css">
+  <script type="text/javascript" src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
   <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=LPhMiMnQfmi0YC2uw0MLlcKufsuUypih"></script>
   <script type="text/javascript" src="http://api.map.baidu.com/library/CurveLine/1.5/src/CurveLine.min.js"></script>
   <script>
       $(document).ready(function() {
           $("#data").hide();
-          $("#maps").hide();
+          // $("#maps").hide();
+          $("#maps").css("opacity",0);
           $("#checkbutton").click(function () {
               $("#logo").addClass("unable");
               $("#find").removeClass("find").addClass("newFind");
               $("#unable1").removeClass("unable");
               $("#unable2").removeClass("unable");
-              $("#data").show();
-              $("#maps").show();
-              var kdno = $("#expressno").val();
-              console.log(kdno);
+              $("#data").show(1000);
+              $("#maps").show(1000);
+              var expCode = $("#expressno").val();
+              console.log(expCode);
               $.ajax({
                   type: "GET",
                   scriptCharset: "utf-8",
-                  url: "/ajaxrequest",
-                  data: "kdno=" + kdno,
+                  url: "/GetShipStatus",
+                  data: "expCode=" + expCode,
                   contentType:"application/json",
                   dataType: "json",
 
@@ -31,63 +33,58 @@
                       var arr = eval(result);
                       $("#data").empty();
                       if(arr.length == 0){
-                          $("#data").append(kdno + "没有查询该快递单号结果，请检查快递单号或稍后重试");
-                      }
-                      for(var m = 0; m < arr.length; m++){
-                          $("#data").append(arr[m] + '<br/>');
+                          $("#data").append(expCode + "没有查询该快递单号结果，请检查快递单号或稍后重试");
+                      } else {
+                          $("#data").append('快递'+ expCode + ' ');
+                          // console.log(resu)
+                          if (result.state == '2') $("#data").append('在途' + '<br/>');
+                          else if (result.state == '3') $("#data").append('已签收' + '<br/>');
+                          else if (result.state == '4') $("#data").append('出现问题' + '<br/>');
+                          else $("#data").append('未知错误' + '<br/>');
+                          for (var p in result.traces) {
+                              $("#data").append(result.traces[p].time + " " + result.traces[p].location + '<br>');
+                          }
                       }
                       console.log("快递状态信息已经获取");
-                      getLocations();
+                      drawLocations(result.traces);
                   },
                   error: function () {
-                      console.log(kdno + " 该快递单号未返回正确的信息，请稍后重试。");
-                      $("#myDiv").html(kdno + "该快递单号未返回正确的信息，请稍后重试");
+                      console.log(expCode + " 该快递单号未返回正确的信息，请稍后重试。");
+                      $("#myDiv").html(expCode + "该快递单号未返回正确的信息，请稍后重试");
                   }
 
               });
           });
       });
-      function getLocations() {
-          $.ajax({
-              type: "GET",
-              scriptCharset: "utf-8",
-              url: "/ajaxLocation",
-              contentType:"application/json",
-              dataType: "json",
-
-              success: function (result) {
-                  var arr = eval(result);
-                  console.log(JSON.parse(arr[0]).lng);
-                  if(arr.length == 0){
-                      $("#data").append("没有查询该快递单号地图信息结果，请检查快递单号或稍后重试");
-                  }
-                  for(var m = 0; m < arr.length; m++){
-                      arr[m] = JSON.parse(arr[m]);
-                  }
-                  var map = new BMap.Map("maps");
-                  var points = new Array(arr.length);
-                  for (var i = 0; i < arr.length; i++) {
-                      points[i] = new BMap.Point(arr[i].lng, arr[i].lat);
-                      var maker = new BMap.Marker(points[i]);
-                      map.addOverlay(maker);
-                  }
-                  map.centerAndZoom(new BMap.Point(arr[arr.length-1].lng, arr[arr.length-1].lat), 9);
-                  map.enableScrollWheelZoom();
-                  var curve = new BMapLib.CurveLine(points, {strokeColor:"blue", strokeWeight:3, strokeOpacity:0.5}); //创建弧线对象
-                  map.addOverlay(curve); //添加到地图中
-                  curve.enableEditing(); //开启编辑功能
-
-                  console.log("地图已经显示");
-
-              },
-              error: function () {
-                  console.log(" 该快递单号未返回正确的信息，请稍后重试。");
-                  $("#myDiv").html("地图未正确显示");
+      function drawLocations(jsonStatus) {
+          var map = new BMap.Map("maps");
+          var meaningful = 0;
+          for (var i = 0; i < jsonStatus.length; i++) {
+              if (jsonStatus[i].lng) {
+                  meaningful++;
               }
-          });
+          }
+          var meaningfulPoints = new Array(meaningful);
+          for (var i = 0, j = 0; i < jsonStatus.length; i++) {
+              if (jsonStatus[i].lng) {
+                  meaningfulPoints[j] = new BMap.Point(jsonStatus[i].lng, jsonStatus[i].lat);
+                  var marker = new BMap.Marker(meaningfulPoints[j]);
+                  map.addOverlay(marker);
+                  j++;
+              }
+          }
+          map.centerAndZoom(meaningfulPoints[0], 9);
+          map.enableScrollWheelZoom();
+          var curve = new BMapLib.CurveLine(meaningfulPoints, {
+              strokeColor: "blue",
+              strokeWeight: 3,
+              strokeOpacity: 0.5
+          }); //创建弧线对象
+          map.addOverlay(curve); //添加到地图中
+          curve.enableEditing(); //开启编辑功能
+          $("#maps").animate({opacity: 100}, 2000);
       }
   </script>
-
 
   <style type="text/css">
     *{
@@ -131,7 +128,6 @@
       top:84px;
       background-color: rgba(255,255,255,0.8);
       width: 348px;
-      /**/
       height: 400px;
       padding:20px 30px;
       overflow: hidden;
@@ -148,15 +144,6 @@
     .unable{
       display: none;
     }
-    .anchorBL{
-      display:none;
-    }
-    .BMap_Marker{
-      width: 4px;
-      height: 4px;
-      background-color: red;
-      border-radius: 2px;
-    }
   </style>
 </head>
 <body>
@@ -164,7 +151,7 @@
 <div class="find" id="find">
   <img src="./img/logo.png" id="logo">
   <div class="input-group input-new" id="search">
-    <input type="text" style="outline:none;" class="form-control" aria-label="..." v-model="serviceData.keyword" id="expressno">
+    <input type="text" style="outline:none;" class="form-control" aria-label="..." v-model="serviceData.keyword" id="expressno" value="486755428029">
     <div class="input-group-btn">
       <button type="button" class="btn btn-default" id="checkbutton">快查一下</button>
     </div>
@@ -186,17 +173,3 @@
 </footer>
 </body>
 </html>
-<script type="text/javascript">
-    // 百度地图API功能
-    var map = new BMap.Map("maps");
-    map.centerAndZoom(new BMap.Point(118.454, 32.955), 6);
-    map.enableScrollWheelZoom();
-    var beijingPosition=new BMap.Point(116.432045,39.910683),
-        hangzhouPosition=new BMap.Point(120.129721,30.314429),
-        taiwanPosition=new BMap.Point(121.491121,25.127053);
-    var points = [beijingPosition,hangzhouPosition, taiwanPosition];
-
-    var curve = new BMapLib.CurveLine(points, {strokeColor:"blue", strokeWeight:3, strokeOpacity:0.5}); //创建弧线对象
-    map.addOverlay(curve); //添加到地图中
-    curve.enableEditing(); //开启编辑功能
-</script>
